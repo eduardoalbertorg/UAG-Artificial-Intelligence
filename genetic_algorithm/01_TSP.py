@@ -4,8 +4,6 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 
-
-#Genome = List[List[int]]
 Genome_distances = List[float]
 CITIES_DICT = {
     1: [1, 3],

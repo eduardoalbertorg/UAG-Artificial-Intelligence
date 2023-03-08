@@ -1,3 +1,4 @@
+import logging    # first of all import the module
 import math
 import matplotlib.pyplot as plt
 import numpy as np
@@ -6,7 +7,12 @@ from typing import List
 from copy import copy
 import pdb
 
+logging.basicConfig(filename='std.log', filemode='w', format='%(name)s - %(levelname)s - %(message)s')
+#Let us Create an object 
+logger = logging.getLogger()
 
+#Now we are going to Set the threshold of logger to DEBUG 
+logger.setLevel(logging.DEBUG)
 population = list()
 genome_fitness_array = list()
 
@@ -19,9 +25,9 @@ def get_reference_func():
     E = 10
     F = 17
     G = 35
-    for i in range(1, 1000):
+    for i in range(1000):
         x = i / 10
-        y.append(A * (B * math.sin(x / C)) + D * math.cos((x / E)) + F * x - G)
+        y.append((A * ((B * math.sin(x / C)) + (D * math.cos(x / E)))) + (F * x) - G)
     return y
 
 def initialize_genome_fitness(size: int):
@@ -31,36 +37,30 @@ def generate_population(size: int, cromosome_size) -> population:
     return [generate_cromosomes(cromosome_size) for _ in range(size)]
 
 def generate_cromosomes(size: int):
-    return [random.randint(1, 254) for _ in range(size)]
+    return [random.randint(1, 255) for _ in range(size)]
 
 def get_function_from_cromosome(cromosome: list):
-    print("# Calculating function for cromosome.")
     y = list()
-    cromosome = [gene / 3 for gene in cromosome]
+    biggest_number = 255 / max(cromosome)
+    cromosome = [int(gene // 5) for gene in cromosome]
     for i, value in enumerate(cromosome):
         if value == 0:
-            cromosome[i] = 0.1
+            cromosome[i] = 1
     A = cromosome[0]
-    print(f"A = {A}")
     B = cromosome[1]
-    print(f"B = {B}")
     C = cromosome[2]
-    print(f"C = {C}")
     D = cromosome[3]
-    print(f"D = {D}")
     E = cromosome[4]
-    print(f"E = {E}")
     F = cromosome[5]
-    print(f"F = {F}")
     G = cromosome[6]
-    print(f"G = {G}")
-    for i in range(1, 1000):
+    logger.debug(f"## Cromosome values: {A}, {B}, {C}, {D}, {E}, {F}, {G}")
+    for i in range(1000):
         x = i / 10
-        y.append(A * (B * math.sin(x / C)) + D * math.cos((x / E)) + F * x - G)
+        y.append((A * ((B * math.sin(x / C)) + (D * math.cos(x / E)))) + (F * x) - G)
     return y
 
 def convert_to_binary(value: int) -> str:
-    print("Converting to Binary: ", value, type(value))
+    logger.debug(f"## Converting to Binary: {value} {type(value)}")
     return bin(value).replace("0b", "").zfill(8)
 
 def split_binary_value(upper_length: int, value: str):
@@ -96,12 +96,17 @@ def split_gene(cromosome: list, index_to_cut: int, bits_to_cut_gene: int):
     return upper_value, lower_value
 
 def reproduce(father_cromosome: list, mother_cromosome: list, bits_to_cut_cromosome = None):
+    logger.info(f"## Reproducing")
+    logger.debug(f"## Parent1: {father_cromosome}")
+    logger.debug(f"## Parent2: {mother_cromosome}")
     child_1 = list()
     child_2 = list()
     if bits_to_cut_cromosome == None:
         bits_to_cut_cromosome = select_random_bits_to_cut()
 
+    logger.debug(f"Bits to cut: {bits_to_cut_cromosome}")
     index_to_cut, fractional = select_cromosome_cut_position(bits_to_cut_cromosome)
+    logger.debug(f"Index to cut: {index_to_cut}, Fractional: {fractional}")
     if fractional != None:
         # Means that we must cut through the gene
         bits_to_cut_gene = int(8 * fractional)
@@ -120,14 +125,23 @@ def reproduce(father_cromosome: list, mother_cromosome: list, bits_to_cut_cromos
     # Fuse parts from both parents to create new children
     child_1 = parent_1_upper + parent_2_lower
     child_2 = parent_2_upper + parent_1_lower
+    logger.debug(f"## Resulting children:")
+    logger.debug(f"## Children 1: {child_1}")
+    logger.debug(f"## Children 2: {child_2}")
     return child_1, child_2
 
 
-def get_best_fitted_parents(population: list, tournament_limit: int, number_of_contestants: int):
+def get_best_fitted_parents(population: list, tournament_limit: int, number_of_contestants: int, exclude_indices_array: list = None):
+    logger.info(f"## Getting best fitted parents")
     parents_array = list()
+    contestants_indices = list()
     population_size = len(population)
     for _ in range(tournament_limit):
-        contestants_indices = random.choices(range(0, population_size-1), k=number_of_contestants)
+        if exclude_indices_array == None:
+            contestants_indices = random.choices(range(0, population_size-1), k=number_of_contestants)
+        else:
+            contestants_indices = random.choices([i for i in range(0, population_size-1) if i not in exclude_indices_array], k=number_of_contestants)
+            #contestants_indices = random.choices(range(0, population_size-1) if not in , k=number_of_contestants)
         shortest_error = float('inf')
         winner_index = None
         for i in contestants_indices:
@@ -136,11 +150,14 @@ def get_best_fitted_parents(population: list, tournament_limit: int, number_of_c
                 shortest_error = fitness
                 winner_index = i
         parents_array.append(winner_index)
+    logger.debug(f"## Best fitted parents: \n{parents_array}")
     return parents_array
 
 def mutate(population: list, population_percentage: int):
-    bits_to_modify = int(population_percentage * len(population) / 100)
-    for i in range(bits_to_modify):
+    bits_to_mutate = int(population_percentage * len(population) / 100)
+    logger.info(f"## Mutating total of {bits_to_mutate} bits")
+    for i in range(bits_to_mutate):
+        logger.debug(f"## Current mutation {i}")
         random_population_index = random.randint(0, len(population) - 1)
         bit = random.randint(1, 56)
         cut_index, fractional = select_cromosome_cut_position(bit)
@@ -151,9 +168,9 @@ def mutate(population: list, population_percentage: int):
     return population
 
 def negate_bit(cromosome:list, cut_index:int, bit_position: int):
-    print("Negating")
-    print("Cut index", cut_index)
-    print("Cromosome:", len(cromosome), cromosome)
+    logger.info("## Negating")
+    logger.debug(f"## Cut index {cut_index}")
+    logger.debug(f"## Cromosome: {len(cromosome)} {cromosome}")
     binary_gene_value_as_list = list(convert_to_binary(cromosome[cut_index]))
     binary_gene_value_as_list[bit_position] = '0' if (binary_gene_value_as_list[bit_position] == 1) else '1'
     binary_gene_value_as_string = "".join(binary_gene_value_as_list)
@@ -166,12 +183,12 @@ def elitism(elitist_array):
     pass
 
 def generate_populations_fitness(reference_function, population: list):
-    
+    logger.info(f"## Generating fitness for cromosome")
     for i, cromosome in enumerate(population):
         summation = 0.0
         cromosome_func = get_function_from_cromosome(cromosome)
         for index in range(len(reference_function)):
-            summation += abs(reference_function[index] - cromosome_func[index])
+            summation += int(abs(reference_function[index] - cromosome_func[index]))
         #genome_fitness_array[i] = np.sum(np.absolute(reference_function - get_function_from_cromosome(cromosome)))
         genome_fitness_array[i] = summation
     return genome_fitness_array
@@ -179,11 +196,11 @@ def generate_populations_fitness(reference_function, population: list):
 if __name__ == "__main__":
     POPULATION_SIZE = 500
     CROMOSOME_SIZE = 7
-    GENERATIONS_LIMIT = 1000
-    NUMBER_OF_CONTESTANTS = int(100 * 0.07)
+    GENERATIONS_LIMIT = POPULATION_SIZE * 2
+    NUMBER_OF_CONTESTANTS = int(POPULATION_SIZE * 0.05)
     TOURNAMENT_LIMIT = int(POPULATION_SIZE / 2)
     APPLY_ELITISM = False
-    MUTATION_PERCENTAGE = 0
+    MUTATION_PERCENTAGE = 7
     reference_function = get_reference_func()
     plt.ion()
     fig, (ax1, ax2) = plt.subplots(1, 2)
@@ -195,29 +212,33 @@ if __name__ == "__main__":
     generation_list = list()
     best_fit_list = list()
     for generation in range(GENERATIONS_LIMIT):
-        print("Current generation:", generation)
+        logger.debug(f"Current generation: # {generation}")
         generation_list.append(generation)
         children = list()
         fathers_indices_array = get_best_fitted_parents(copy(population), TOURNAMENT_LIMIT, NUMBER_OF_CONTESTANTS)
         fathers_array = [population[index] for index in fathers_indices_array]
-        mothers_indices_array = get_best_fitted_parents(copy(population), TOURNAMENT_LIMIT, NUMBER_OF_CONTESTANTS)
+        mothers_indices_array = get_best_fitted_parents(copy(population), TOURNAMENT_LIMIT, NUMBER_OF_CONTESTANTS, fathers_indices_array)
         mothers_array = [population[index] for index in mothers_indices_array]
 
         for i in range(len(fathers_array)):
+            logger.info(f"Current reproduction cycle: # {i}")
             child_1, child_2 = reproduce(copy(fathers_array[i]), copy(mothers_array[i]))
             children.append(child_1)
             children.append(child_2)
 
         if MUTATION_PERCENTAGE > 0:
-            print("Mutating")
-            children = mutate(children, MUTATION_PERCENTAGE)
+            logger.info("Mutating")
+            children = mutate(copy(children), MUTATION_PERCENTAGE)
         
         if APPLY_ELITISM:
+            logger.info("Applying elitism")
             elitist_array = population + children
             children = elitism(elitist_array)
 
+        logger.debug(f"$$ Children #{generation} size: {len(children)}, values: \n {children}")
         population = copy(children)
-        genome_fitness_array = generate_populations_fitness(reference_function, copy(population))
+        genome_fitness_array = generate_populations_fitness(copy(reference_function), copy(population))
+        logger.debug(f"@@@@ FA: {genome_fitness_array}")
         best_child_index = np.argmin(genome_fitness_array)
         best_fit_child_value = genome_fitness_array[best_child_index]
         best_fit_list.append(best_fit_child_value)
@@ -225,10 +246,10 @@ if __name__ == "__main__":
         ax1.set_title("Functions")
         ax1.set_xlabel("x")
         ax1.set_ylabel("y")
-        ax1.plot(reference_function)
-        ax1.plot(get_function_from_cromosome(copy(population[best_child_index])), linestyle='dashed')
+        ax1.plot(reference_function, label="Target")
+        ax1.plot(get_function_from_cromosome(copy(population[best_child_index])), linestyle='dashed', label="Current best fit")
         ax2.clear()
         ax2.set_title("Best fit per generation")
         ax2.plot(generation_list, best_fit_list)
         plt.show(block = False)
-        plt.pause(1)
+        plt.pause(0.7)

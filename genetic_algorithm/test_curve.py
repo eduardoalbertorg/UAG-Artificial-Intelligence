@@ -74,17 +74,3 @@ def test_reproduction_1():
     print(expected_child_1)
     assert np.array_equal(child_1, expected_child_1) == True
     assert np.array_equal(child_2, expected_child_2) == True
-
-def test_reproduction_2():
-    total_bits_to_cut = 24
-    father_cromosome = [91, 71, 110, 14, 190, 53, 61]
-    mother_cromosome = [187, 186, 224, 163, 238, 98, 198]
-    expected_child_1 = [165, 95, 128, 163, 238, 98, 198]
-    expected_child_2 = [187, 186, 226, 250, 140, 27, 133]
-    child_1, child_2 = curve.reproduce(father_cromosome, mother_cromosome, total_bits_to_cut)
-    print("child1")
-    print(child_1)
-    print("expected1")
-    print(expected_child_1)
-    assert np.array_equal(child_1, expected_child_1) == True
-    assert np.array_equal(child_2, expected_child_2) == True

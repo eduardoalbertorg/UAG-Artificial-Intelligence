@@ -41,7 +41,6 @@ def generate_cromosomes(size: int):
 
 def get_function_from_cromosome(cromosome: list):
     y = list()
-    biggest_number = 255 / max(cromosome)
     cromosome = [int(gene // 5) for gene in cromosome]
     for i, value in enumerate(cromosome):
         if value == 0:
@@ -252,4 +251,4 @@ if __name__ == "__main__":
         ax2.set_title("Best fit per generation")
         ax2.plot(generation_list, best_fit_list)
         plt.show(block = False)
-        plt.pause(0.7)
+        plt.pause(0.2)
